@@ -1,0 +1,1109 @@
+arabic-test-driving/
+├── app/
+├── components/
+├── lib/
+├── public/
+├── prisma/
+├── data/
+└── package.json 
+{
+  "name": "arabic-test-driving",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "db:seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "next": "14.0.4",
+    "react": "^18",
+    "react-dom": "^18",
+    "@prisma/client": "^5.7.1",
+    "stripe": "^14.5.0",
+    "next-auth": "^4.24.5",
+    "tailwindcss": "^3.3.6",
+    "framer-motion": "^10.16.16",
+    "react-icons": "^5.0.1",
+    "date-fns": "^2.30.0",
+    "papaparse": "^5.4.1",
+    "xlsx": "^0.18.5",
+    "react-hot-toast": "^2.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "prisma": "^5.7.1",
+    "typescript": "^5",
+    "tailwindcss": "^3.3.6",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.32"
+  }
+}
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  tests         TestResult[]
+  subscription  Subscription?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Question {
+  id              String   @id @default(cuid())
+  code            String   @unique
+  category        String
+  section         String
+  difficulty      String
+  questionArabic  String
+  questionGreek   String
+  questionGreekAr String
+  option1         String
+  option2         String
+  option3         String
+  correctAnswer   Int
+  explanation     String
+  image           String?
+  icon            String
+  createdAt       DateTime @default(now())
+  tests           TestResult[]
+}
+
+model TestResult {
+  id          String   @id @default(cuid())
+  userId      String
+  testType    String
+  score       Int
+  total       Int
+  questions   Json
+  completedAt DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model Subscription {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  status     String   @default("trial")
+  stripeId   String?
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model FAQ {
+  id        String @id @default(cuid())
+  question  String
+  answer    String
+  category  String
+  order     Int   @default(0)
+}
+
+model ContactMessage {
+  id         String   @id @default(cuid())
+  name       String
+  email      String
+  message    String
+  createdAt  DateTime @default(now())
+}
+code,category,section,difficulty,questionArabic,questionGreek,questionGreekAr,option1,option2,option3,correctAnswer,explanation,image,icon
+Q001,A,علامات الطريق,سهل,ما معنى هذه العلامة؟,ΤΙ ΣΗΜΑΙΝΕΙ ΑΥΤΟ ΤΟ ΣΗΜΑ?,تي سيمايْنِي أفْتو سيما؟,وقوف ممنوع,سرعة قصوى 50,منع التجاوز,1,هذه العلامة تعني وقوف ممنوع / Απαγόρευση στάσης,signs/stop.svg,🚫
+Q002,A,حقوق الطريق,متوسط,من له الأولوية في هذه التقاطع؟,ΠΟΙΟΣ ΕΧΕΙ ΠΡΟΤΙΜΗ?,بويوس إخِي بروتيمي؟,القادم من اليمين,القادم من اليسار,كلاهما,1,القادم من اليمين له الأولوية / Δεξιά προτεραιότητα,right-of-way.svg,🛣️
+Q003,B,ميكانيكا السيارة,سهل,ما هو الضغط الموصى به للإطارات؟,ΠΟΙΑ ΕΙΝΑΙ Η ΣΥΣΤΗΜΕΝΗ ΠΙΕΣΗ ΕΛΑΣΤΙΚΩΝ?,بويا إينايِ ه سيستمِيني بيِسي إلاستيكون؟,2.0 بار,2.5 بار,3.0 بار,2,الضغط الموصى به 2.5 بار / 2.5 bar,tire-pressure.svg,🚗
+Q004,A,السلوك على الطريق,متوسط,ما هو الحد الأقصى للكحول في الدم؟,ΠΟΙΟΣ ΕΙΝΑΙ Ο ΜΕΓΙΣΤΟΣ ΟΡΙΟΣ ΑΛΚΟΟΛ?,بويوس إينايِ أو ميغيستوس أوريوس ألكول؟,0.2‰,0.5‰,1.0‰,2,0.5‰ هو الحد الأقصى / 0.5‰ μέγιστο,tolerance.svg,🍺
+Q005,B,السلامة على الطريق,سهل,يجب ارتداء حزام الأمان:,ΠΡΕΠΕΙ ΝΑ ΦΟΡΕΙΤΑΙ ΖΩΝΗ?,برِبِي نا فورِتِي زونِ؟,دائماً,فقط في المدينة,على الطرق السريعة,1,يجب ارتداء الحزام دائماً / Πάντα ζώνη,seatbelt.svg,🛡️
+import { PrismaClient } from '@prisma/client';
+import fs from 'fs';
+import Papa from 'papaparse';
+
+const prisma = new PrismaClient();
+
+async function seed() {
+  // Seed questions from CSV
+  const csvData = fs.readFileSync('./data/questions.csv', 'utf8');
+  const parsed = Papa.parse(csvData, { header: true }).data;
+
+  for (const row of parsed) {
+    await prisma.question.upsert({
+      where: { code: row.code },
+      update: {},
+      create: {
+        code: row.code,
+        category: row.category,
+        section: row.section,
+        difficulty: row.difficulty,
+        questionArabic: row.questionArabic,
+        questionGreek: row.questionGreek,
+        questionGreekAr: row.questionGreekAr,
+        option1: row.option1,
+        option2: row.option2,
+        option3: row.option3,
+        correctAnswer: parseInt(row.correctAnswer),
+        explanation: row.explanation,
+        image: row.image,
+        icon: row.icon,
+      },
+    });
+  }
+
+  console.log('Database seeded successfully!');
+}
+
+seed().catch(e => console.error(e)).finally(() => prisma.$disconnect());
+import { Inter } from 'next/font/google';
+import './globals.css';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import { AuthProvider } from '@/lib/auth';
+import { Toaster } from 'react-hot-toast';
+import { Metadata } from 'next';
+
+const inter = Inter({ subsets: ['latin', 'arabic'] });
+
+export const metadata: Metadata = {
+  title: 'ArabicTestDriving - اختبارات القيادة اليونانية بالعربية',
+  description: 'تعلم واختبر نظرية القيادة اليونانية باللغة العربية - اجتاز الامتحان بسهولة!',
+  keywords: ['قيادة يونانية', 'رخصة قيادة', 'اختبار نظرية', 'عربي', 'اليونان'],
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="ar" dir="rtl">
+      <body className={`${inter.className} bg-white text-blue-900`}>
+        <AuthProvider>
+          <Header />
+          <main className="min-h-screen">{children}</main>
+          <Footer />
+          <Toaster position="top-right" />
+        </AuthProvider>
+      </body>
+    </html>
+  );
+}
+'use client';
+import Link from 'next/link';
+import { useSession, signOut } from 'next-auth/react';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FaBars, FaTimes, FaUser } from 'react-icons/fa';
+import { usePathname } from 'next/navigation';
+
+const navItems = [
+  { href: '/', label: 'الرئيسية', icon: '🏠' },
+  { href: '/categories', label: 'فئات المركبات', icon: '🚗' },
+  { href: '/theory', label: 'النظرية', icon: '📚' },
+  { href: '/tests/ready', label: 'اختبارات جاهزة', icon: '✅' },
+  { href: '/tests/section', label: 'اختبارات الأقسام', icon: '📋' },
+  { href: '/faq', label: 'الأسئلة الشائعة', icon: '❓' },
+  { href: '/contact', label: 'اتصل بنا', icon: '📞' },
+];
+
+export default function Header() {
+  const [mobileMenu, setMobileMenu] = useState(false);
+  const { data: session } = useSession();
+  const pathname = usePathname();
+
+  return (
+    <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-blue-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center py-4">
+          {/* Logo */}
+          <Link href="/" className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+            ArabicTestDriving
+          </Link>
+
+          {/* Desktop Nav */}
+          <nav className="hidden md:flex items-center space-x-8 space-x-reverse">
+            {navItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center space-x-2 space-x-reverse px-3 py-2 rounded-lg transition-all duration-200 ${
+                  pathname === item.href
+                    ? 'bg-blue-600 text-white shadow-lg'
+                    : 'text-blue-700 hover:bg-blue-50 hover:text-blue-900'
+                }`}
+              >
+                <span>{item.icon}</span>
+                <span>{item.label}</span>
+              </Link>
+            ))}
+          </nav>
+
+          {/* Right side */}
+          <div className="flex items-center space-x-4 space-x-reverse">
+            {session ? (
+              <>
+                <Link
+                  href="/dashboard"
+                  className="flex items-center space-x-2 space-x-reverse p-2 rounded-lg hover:bg-blue-50"
+                >
+                  <FaUser />
+                  <span>{session.user?.name}</span>
+                </Link>
+                <button
+                  onClick={() => signOut()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
+                >
+                  تسجيل الخروج
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/login"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
+              >
+                دخول
+              </Link>
+            )}
+
+            {/* Mobile menu button */}
+            <button
+              className="md:hidden p-2 rounded-lg hover:bg-blue-50"
+              onClick={() => setMobileMenu(!mobileMenu)}
+            >
+              {mobileMenu ? <FaTimes /> : <FaBars />}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Nav */}
+        <AnimatePresence>
+          {mobileMenu && (
+            <motion.nav
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="md:hidden pb-8 space-y-4"
+            >
+              {navItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`block flex items-center space-x-3 space-x-reverse p-3 rounded-xl ${
+                    pathname === item.href
+                      ? 'bg-blue-600 text-white'
+                      : 'text-blue-700 hover:bg-blue-50'
+                  }`}
+                  onClick={() => setMobileMenu(false)}
+                >
+                  <span className="text-xl">{item.icon}</span>
+                  <span className="font-medium">{item.label}</span>
+                </Link>
+              ))}
+            </motion.nav>
+          )}
+        </AnimatePresence>
+      </div>
+    </header>
+  );
+}
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { FaCar, FaBook, FaClipboardCheck, FaQuestionCircle } from 'react-icons/fa';
+
+const features = [
+  {
+    icon: '🚗',
+    title: 'فئات المركبات',
+    description: 'اختر فئة المركبة المناسبة لك',
+    href: '/categories',
+  },
+  {
+    icon: '📚',
+    title: 'دروس النظرية',
+    description: 'تعلم جميع المواضيع بالتفصيل',
+    href: '/theory',
+  },
+  {
+    icon: '✅',
+    title: 'اختبارات جاهزة',
+    description: 'اختبارات كاملة مثل الامتحان الرسمي',
+    href: '/tests/ready',
+  },
+  {
+    icon: '📋',
+    title: 'اختبارات الأقسام',
+    description: 'مارس كل قسم على حدة',
+    href: '/tests/section',
+  },
+];
+
+export default function Home() {
+  return (
+    <div className="min-h-screen">
+      {/* Hero Section */}
+      <section className="bg-gradient-to-br from-blue-600 to-blue-800 text-white py-32 px-4">
+        <div className="max-w-7xl mx-auto text-center">
+          <motion.h1
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="text-5xl md:text-7xl font-bold mb-8 leading-tight"
+          >
+            اجتاز امتحان{' '}
+            <span className="bg-gradient-to-r from-yellow-300 to-orange-400 bg-clip-text text-transparent">
+              القيادة اليونانية
+            </span>
+            <br />
+            <span className="text-3xl md:text-4xl">باللغة العربية</span>
+          </motion.h1>
+          
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="text-xl md:text-2xl mb-12 max-w-3xl mx-auto leading-relaxed"
+          >
+            أول منصة عربية لتدريب على نظرية القيادة اليونانية
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+            className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+          >
+            <Link
+              href="/categories"
+              className="bg-white text-blue-600 px-12 py-5 rounded-2xl font-bold text-xl shadow-2xl hover:shadow-3xl hover:scale-105 transition-all duration-300 flex items-center space-x-3 space-x-reverse"
+            >
+              <FaCar />
+              <span>ابدأ الآن</span>
+            </Link>
+            <Link
+              href="/theory"
+              className="border-2 border-white text-white px-12 py-
+              py-5 rounded-2xl font-bold text-xl hover:bg-white hover:text-blue-600 transition-all duration-300 flex items-center space-x-3 space-x-reverse"
+            >
+              <FaBook />
+              <span>الدروس النظرية</span>
+            </Link>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="py-32 px-4 bg-gradient-to-b from-blue-50 to-white">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-24"
+          >
+            <h2 className="text-4xl md:text-5xl font-bold text-blue-900 mb-6">
+              كل ما تحتاجه للنجاح
+            </h2>
+            <p className="text-xl text-blue-700 max-w-2xl mx-auto">
+              دروس تفصيلية + اختبارات شاملة + تتبع التقدم
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {features.map((feature, index) => (
+              <motion.div
+                key={feature.title}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+                whileHover={{ y: -10, scale: 1.02 }}
+                className="group bg-white rounded-3xl p-10 shadow-xl hover:shadow-2xl transition-all duration-300 border border-blue-50 hover:border-blue-200 h-full flex flex-col items-center text-center space-y-6 cursor-pointer"
+              >
+                <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center text-4xl shadow-2xl group-hover:scale-110 transition-transform duration-300">
+                  <span>{feature.icon}</span>
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-blue-900 mb-4 group-hover:text-blue-600 transition-colors">
+                    {feature.title}
+                  </h3>
+                  <p className="text-blue-700 leading-relaxed">{feature.description}</p>
+                </div>
+                <Link href={feature.href} className="text-blue-600 font-bold hover:text-blue-800">
+                  ابدأ → 
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Section */}
+      <section className="py-24 px-4 bg-blue-600 text-white">
+        <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-8 text-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+          >
+            <div className="text-4xl md:text-5xl font-bold mb-2">500+</div>
+            <div className="text-blue-200">سؤال في القاعدة</div>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+          >
+            <div className="text-4xl md:text-5xl font-bold mb-2">95%</div>
+            <div className="text-blue-200">معدل النجاح</div>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 }}
+          >
+            <div className="text-4xl md:text-5xl font-bold mb-2">10K+</div>
+            <div className="text-blue-200">طالب ناجح</div>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.3 }}
+          >
+            <div className="text-4xl md:text-5xl font-bold mb-2">⭐ 4.9</div>
+            <div className="text-blue-200">تقييم المستخدمين</div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-24 px-4 bg-white">
+        <div className="max-w-4xl mx-auto text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <h2 className="text-4xl md:text-5xl font-bold text-blue-900 mb-6">
+              جاهز للبدء؟{' '}
+              <span className="text-blue-600">التسجيل مجاني!</span>
+            </h2>
+            <p className="text-xl text-blue-700 mb-12 max-w-2xl mx-auto">
+              اشترك الآن واحصل على شهر تجريبي مجاني كامل
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                href="/register"
+                className="bg-blue-600 text-white px-12 py-6 rounded-2xl font-bold text-xl shadow-2xl hover:shadow-3xl hover:scale-105 transition-all duration-300"
+              >
+                سجل مجاناً
+              </Link>
+              <Link
+                href="/categories"
+                className="border-4 border-blue-600 text-blue-600 px-12 py-6 rounded-2xl font-bold text-xl hover:bg-blue-600 hover:text-white transition-all duration-300"
+              >
+                شاهد المحتوى
+              </Link>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+    </div>
+  );
+}
+'use client';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
+import { useSession } from 'next-auth/react';
+
+interface Question {
+  id: string;
+  questionArabic: string;
+  questionGreekAr: string;
+  option1: string;
+  option2: string;
+  option3: string;
+  correctAnswer: number;
+  explanation: string;
+  image?: string;
+  icon: string;
+}
+
+interface TestQuestionProps {
+  question: Question;
+  onAnswer: (isCorrect: boolean) => void;
+  questionIndex: number;
+  totalQuestions: number;
+}
+
+export default function TestQuestion({
+  question,
+  onAnswer,
+  questionIndex,
+  totalQuestions,
+}: TestQuestionProps) {
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [showResult, setShowResult] = useState(false);
+  const { data: session } = useSession();
+
+  const handleAnswer = (answerIndex: number) => {
+    setSelectedAnswer(answerIndex);
+    const isCorrect = answerIndex === question.correctAnswer;
+    setShowResult(true);
+    onAnswer(isCorrect);
+  };
+
+  const answers = [
+    { text: question.option1, index: 1 },
+    { text: question.option2, index: 2 },
+    { text: question.option3, index: 3 },
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 50 }}
+      animate={{ opacity: 1, x: 0 }}
+      className="bg-white rounded-3xl shadow-xl p-8 md:p-12 border border-blue-100 mb-12"
+    >
+      {/* Question Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center space-x-3 space-x-reverse">
+          <span className="text-3xl">{question.icon}</span>
+          <div>
+            <div className="text-sm text-blue-500 font-medium">
+              السؤال {questionIndex + 1} من {totalQuestions}
+            </div>
+          </div>
+        </div>
+        <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center">
+          <span className="text-xl">{questionIndex + 1}</span>
+        </div>
+      </div>
+
+      {/* Question Image */}
+      {question.image && (
+        <div className="mb-8 rounded-2xl overflow-hidden shadow-lg mx-auto max-w-2xl">
+          <Image
+            src={question.image}
+            alt="سؤال"
+            width={600}
+            height={400}
+            className="w-full h-64 object-cover"
+          />
+        </div>
+      )}
+
+      {/* Question Text */}
+      <div className="mb-10">
+        <h3 className="text-2xl md:text-3xl font-bold text-blue-900 mb-4 leading-tight">
+          {question.questionArabic}
+        </h3>
+        <div className="text-lg text-blue-600 font-semibold bg-blue-50 p-4 rounded-2xl">
+          {question.questionGreekAr}
+        </div>
+      </div>
+
+      {/* Answer Buttons */}
+      <div className="space-y-4 mb-8">
+        {answers.map((answer) => (
+          <motion.button
+            key={answer.index}
+            onClick={() => !showResult && handleAnswer(answer.index)}
+            disabled={showResult}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className={`w-full p-6 md:p-8 rounded-2xl text-xl font-semibold text-left transition-all duration-200 shadow-lg border-4 flex items-center justify-between ${
+              !showResult
+                ? 'bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200 hover:border-blue-300 hover:shadow-xl cursor-pointer text-blue-800'
+                : selectedAnswer === answer.index
+                ? answer.index === question.correctAnswer
+                  ? 'bg-gradient-to-r from-green-400 to-green-500 border-green-400 text-white shadow-green-300'
+                  : 'bg-gradient-to-r from-red-400 to-red-500 border-red-400 text-white shadow-red-300'
+                : 'bg-gray-100 border-gray-200 text-gray-700'
+            }`}
+          >
+            <span className="flex-1">{answer.text}</span>
+            <span className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center font-bold text-lg flex-shrink-0">
+              {answer.index}
+            </span>
+          </motion.button>
+        ))}
+      </div>
+
+      {/* Result & Explanation */}
+      <AnimatePresence>
+        {showResult && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="pt-8 border-t-4 border-green-200 bg-green-50 rounded-2xl p-8"
+          >
+            <div className="flex items-center space-x-4 space-x-reverse mb-6">
+              <div className="w-16 h-16 bg-green-400 rounded-2xl flex items-center justify-center text-2xl font-bold text-white shadow-lg">
+                ✅
+              </div>
+              <h4 className="text-2xl font-bold text-green-800">إجابة صحيحة!</h4>
+            </div>
+            <div className="bg-white p-6 rounded-2xl shadow-md">
+              <h5 className="text-xl font-bold text-blue-900 mb-4">التفسير:</h5>
+              <p className="text-lg text-blue-800 leading-relaxed">{question.explanation}</p>
+            </div>
+            {!session && (
+              <div className="mt-8 p-4 bg-blue-100 border border-blue-200 rounded-xl text-center">
+                <p className="text-blue-800 font-medium mb-2">
+                  سجل دخولك لحفظ النتائج والمتابعة لاحقاً
+                </p>
+                <a href="/login" className="inline-block bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700">
+                  تسجيل الدخول
+                </a>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+'use client';
+import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import TestQuestion from '@/components/TestQuestion';
+import { saveTestResult } from '@/lib/api';
+
+export default function ReadyTests() {
+  const [questions, setQuestions] = useState([]);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [score, setScore] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [testCompleted, setTestCompleted] = useState(false);
+  const { data: session } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    loadQuestions();
+  }, []);
+
+  const loadQuestions = async () => {
+    try {
+      // Fetch 40 random questions for full test
+      const response = await fetch('/api/questions/random?count=40');
+      const data = await response.json();
+      setQuestions(data);
+    } catch (error) {
+      console.error('Error loading questions:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAnswer = (isCorrect: boolean) => {
+    if (isCorrect) {
+      setScore(prev => prev + 1);
+    }
+
+    // Move to next question after delay
+    setTimeout(() => {
+      if (currentQuestionIndex < questions.length - 1) {
+        setCurrentQuestionIndex(prev => prev + 1);
+      } else {
+        setTestCompleted(true);
+        if (session) {
+          saveTestResult({
+            userId: session.user.id,
+            testType: 'ready_test',
+            score: score + 1,
+            total: questions.length,
+            questions: questions,
+          });
+        }
+      }
+    }, 3000);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+          className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full"
+        />
+      </div>
+    );
+  }
+
+  if (testCompleted) {
+    const percentage = Math.round((score / questions.length) * 100);
+    const passed = percentage >= 75;
+
+    return (
+      <div className="min-h-screen py-24 px-4 bg-gradient-to-br from-blue-50 to-blue-100">
+        <div className="max-w-4xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-3xl shadow-2xl p-12 md:p-20 text-center"
+          >
+            <motion.div
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{ duration: 0.5 }}
+              className={`w-32 h-32 mx-auto mb-8 rounded-3xl flex items-center justify-center text-4xl shadow-2xl ${
+                passed ? 'bg-green-400 text-white' : 'bg-red-400 text-white'
+              }`}
+            >
+              {passed ? '✅' : '❌'}
+            </motion.div>
+            
+            <h1 className="text-5xl md:text-6xl font-bold text-blue-900 mb-6">
+              {passed ? 'مبروك!' : 'حاول مرة أخرى'}
+            </h1>
+            
+            <div className="text-4xl font-bold mb-8 text-blue-600">
+              {score} / {questions.length}
+            </div>
+            
+            <div className="text-2xl mb-12 text-blue-700">
+              {percentage}% - {passed ? 'نجحت!' : 'يجب 75% للنجاح'}
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6 mb-12">
+              <div className="bg-blue-50 p-8 rounded-2xl">
+                <h3 className="text-2xl font-bold text-blue-900 mb-4">نقاط القوة</h3>
+                <p className="text-lg">راجع الأخطاء لتحسين النتيجة القادمة</p>
+              </div>
+              <div className="bg-green-50 p-8 rounded-2xl">
+                <h3 className="text-2xl font-bold text-green-800 mb-4">التقدم</h3>
+                <p className="text-lg">
+                  {session 
+                    ? 'تم حفظ النتيجة في حسابك'
+                    : 'قم بتسجيل الدخول لحفظ النتائج'
+                  }
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button
+                onClick={() => router.push('/tests/ready')}
+                className="bg-blue-600 text-white px-12 py-4 rounded-2xl font-bold text-xl hover:bg-blue-700 shadow-xl hover:shadow-2xl transition-all"
+              >
+                اختبار جديد
+              </button>
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="border-2 border-blue-
+                border-blue-600 text-blue-600 px-12 py-4 rounded-2xl font-bold text-xl hover:bg-blue-600 hover:text-white transition-all"
+              >
+                لوحة التحكم
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
+  const currentQuestion = questions[currentQuestionIndex];
+
+  return (
+    <div className="min-h-screen py-12 px-4 bg-gradient-to-br from-blue-50 to-blue-100">
+      <div className="max-w-4xl mx-auto">
+        {/* Progress Bar */}
+        <div className="mb-12">
+          <div className="flex justify-between text-sm text-blue-600 font-medium mb-2">
+            <span>السؤال {currentQuestionIndex + 1} من {questions.length}</span>
+            <span>{score} / {currentQuestionIndex}</span>
+          </div>
+          <div className="w-full bg-blue-200 rounded-full h-3">
+            <div 
+              className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-500 shadow-lg"
+              style={{ width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Current Question */}
+        {currentQuestion && (
+          <TestQuestion
+            question={currentQuestion}
+            onAnswer={handleAnswer}
+            questionIndex={currentQuestionIndex}
+            totalQuestions={questions.length}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+import { NextRequest, NextResponse } from 'next/server';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const category = searchParams.get('category');
+  const section = searchParams.get('section');
+  const count = parseInt(searchParams.get('count') || '10');
+  const randomize = searchParams.get('randomize') === 'true';
+
+  try {
+    let questions;
+    
+    if (randomize) {
+      questions = await prisma.question.findMany({
+        take: count,
+        orderBy: { id: 'desc' },
+        ...(category && { where: { category } }),
+        ...(section && { where: { section } }),
+      });
+    } else {
+      questions = await prisma.question.findMany({
+        where: {
+          ...(category && { category }),
+          ...(section && { section }),
+        },
+        take: count,
+      });
+    }
+
+    return NextResponse.json(questions);
+  } catch (error) {
+    return NextResponse.json({ error: 'Failed to fetch questions' }, { status: 500 });
+  }
+}
+import { NextRequest, NextResponse } from 'next/server';
+import { PrismaClient } from '@prisma/client';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+
+const prisma = new PrismaClient();
+
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { testType, score, total, questions } = await request.json();
+
+    const testResult = await prisma.testResult.create({
+      data: {
+        userId: session.user.id,
+        testType,
+        score,
+        total,
+        questions,
+      },
+    });
+
+    return NextResponse.json({ success: true, testResult });
+  } catch (error) {
+    return NextResponse.json({ error: 'Failed to save test' }, { status: 500 });
+  }
+}
+import NextAuth from 'next-auth';
+import GoogleProvider from 'next-auth/providers/google';
+import AppleProvider from 'next-auth/providers/apple';
+import FacebookProvider from 'next-auth/providers/facebook';
+import { PrismaAdapter } from '@next-auth/prisma-adapter';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+export const authOptions = {
+  adapter: PrismaAdapter(prisma),
+  providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
+    AppleProvider({
+      clientId: process.env.APPLE_CLIENT_ID!,
+      clientSecret: process.env.APPLE_CLIENT_SECRET!,
+    }),
+    FacebookProvider({
+      clientId: process.env.FACEBOOK_CLIENT_ID!,
+      clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
+    }),
+  ],
+  callbacks: {
+    async session({ session, token }) {
+      if (token?.sub) {
+        session.user.id = token.sub;
+      }
+      return session;
+    },
+    async jwt({ token, user }) {
+      if (user?.id) {
+        token.sub = user.id;
+      }
+      return token;
+    },
+  },
+  pages: {
+    signIn: '/login',
+  },
+};
+
+const handler = NextAuth(authOptions);
+export { handler as GET, handler as POST };
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    './pages/**/*.{js,ts,jsx,tsx,mdx}',
+    './components/**/*.{js,ts,jsx,tsx,mdx}',
+    './app/**/*.{js,ts,jsx,tsx,mdx}',
+  ],
+  theme: {
+    extend: {
+      fontFamily: {
+        'arabic': ['Cairo', 'sans-serif'],
+      },
+      animation: {
+        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      },
+    },
+  },
+  plugins: [],
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
+};
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  experimental: {
+    appDir: true,
+  },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
+  },
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+        ],
+      },
+    ];
+  },
+};
+
+module.exports = nextConfig;
+{
+  "name": "ArabicTestDriving",
+  "short_name": "ArabicTestDriving",
+  "description": "اختبارات القيادة اليونانية بالعربية",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
+DATABASE_URL="postgresql://user:password@localhost:5432/arabictestdriving"
+NEXTAUTH_SECRET="your-secret-key"
+NEXTAUTH_URL="https://yourdomain.com"
+GOOGLE_CLIENT_ID="your-google-client-id"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
+STRIPE_SECRET_KEY="your-stripe-secret-key"
+# 1. Install dependencies
+npm install
+
+# 2. Setup database
+npx prisma db push
+npx prisma db seed
+
+# 3. Run development
+npm run dev
+
+# 4. Build for production
+npm run build
+npm start
+app/
+├── categories/
+│   └── page.tsx
+├── theory/
+│   ├── signs/page.tsx
+│   ├── intersections/page.tsx
+│   └── mechanics/page.tsx
+├── dashboard/
+│   └── page.tsx
+├── admin/
+│   └── page.tsx
+├── pricing/
+│   └── page.tsx
+└── faq/
+    └── page.tsx
